@@ -28,7 +28,22 @@ setInterval(() => {
   }
 
   setLedBrightness(device, 1);
-  console.log(readNFC(device));
+
+  console.log();
+
+  readNFC(device).forEach((byte, index) => {
+    process.stdout.write(('00' + byte.toString(16)).slice(-2) + ' ');
+
+    if ((index + 1) % 16 == 0) {
+      console.log();
+    } else if ((index + 1) % 8 == 0) {
+      process.stdout.write('| ');
+    }
+
+  });
+
+  console.log();
+
   process.exit();
 }, 1000);
 
