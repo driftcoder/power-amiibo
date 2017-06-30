@@ -1,8 +1,57 @@
 var fs = require('fs');
 
+var inquirer = require('inquirer');
 var HID = require('node-hid');
 
-var device = new HID.HID(7194, 985);
+var WELCOME_MESSAGE = 'Amiibo Clone Maker v.0.1';
+
+var ACTIONS = {
+  'Save': () => {},
+  'Write': () => {},
+  'Quit': quit,
+};
+
+process.stdout.write('\033c');
+
+console.log(WELCOME_MESSAGE);
+console.log('');
+
+try {
+  var device = new HID.HID(7194, 985);
+} catch(e) {
+  quit('Device Not Found! Bye.');
+}
+
+setLedBrightness(device, 0);
+
+inquirer.prompt({
+  type: 'list',
+  name: 'action',
+  message: 'What would you like to do?',
+  choices: [
+    'Save',
+    'Write',
+    new inquirer.Separator(),
+    'Quit',
+  ],
+  default: 'Quit',
+}).then((choice) => {
+  ACTIONS[choice.action]();
+});
+
+function quit(message = null) {
+  console.log(message || 'Bye.');
+  console.log('');
+  process.exit();
+}
+
+function save() {
+
+}
+
+/*
+
+console.log('1. ')
 
 setLedBrightness(device, 0);
 
@@ -94,3 +143,4 @@ function getCommand(command) {
 
   return command;
 }
+*/
