@@ -2,7 +2,6 @@ var HID = require('node-hid');
 
 var device = new HID.HID(7194, 985);
 
-
 //1C is readin 00 - ??
 //device.write(COMMAND_02);
 //device.readSync();
@@ -34,29 +33,39 @@ setInterval(() => {
 }, 1000);
 
 function getStatus(device) {
-  device.write([0x01, 0x11].concat(Array(63).fill(0xCD)));
+  device.write(getCommand([0x11]));
   device.readSync();
-  device.write([0x01, 0x10].concat(Array(63).fill(0xCD)));
+  device.write(getCommand([0x10]));
   device.readSync();
-  device.write([0x01, 0x12].concat(Array(63).fill(0xCD)));
+  device.write(getCommand([0x12]));
 
   return device.readSync();
 }
 
 function setLedBrightness(device, value) {
-  value = Math.round(value * 255);
-  value = Math.max(0, Math.min(255, value));
+  value = Math.max(0, Math.min(255, Math.round(value * 255)));
 
-  device.write([0x01, 0x20, value].concat(Array(62).fill(0xCD)));
+  device.write(getCommand([0x20, value]));
 }
 
 function readNFC(device) {
   var data = [];
   //33 pages of data
   for (i = 0; i <= 33; i++) {
-    device.write([0x01, 0x1C, i * 4].concat(Array(62).fill(0xCD)));
+    device.write(getCommand([0x1C, i * 4]));
     data = data.concat(device.readSync().slice(2, 18));
   }
 
   return data.slice(0, -4);
+}
+
+function getCommand(command) {
+  command = command.concat(Array(64).fill(0xCD)).slice(0, 64);
+
+  if(/^win/.test(process.platform)) {
+    // If we are on windows we need to prepend 0x01 to the command
+    command = [0x01].concat(command);
+  }
+
+  return command;
 }
