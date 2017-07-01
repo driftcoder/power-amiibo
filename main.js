@@ -1,96 +1,68 @@
 var fs = require('fs');
 
-var inquirer = require('inquirer');
 var HID = require('node-hid');
 
 var WELCOME_MESSAGE = 'Amiibo Clone Maker v.0.1';
 
-var ACTIONS = {
-  'Save': () => {},
-  'Write': () => {},
-  'Quit': quit,
-};
-
-process.stdout.write('\033c');
-
 console.log(WELCOME_MESSAGE);
 console.log('');
+
+var command = process.argv[2];
+var path = process.argv[3];
+
+if (
+  !['read', 'write'].includes(command) ||
+  !path
+) {
+  printUsage();
+  quit();
+}
+
+if (command == 'read' && fs.existsSync(path)) {
+  quit('File already exists.');
+}
+
+if (command == 'write' && !fs.existsSync(path)) {
+  quit('File does not exist.');
+}
 
 try {
   var device = new HID.HID(7194, 985);
 } catch(e) {
-  quit('Device Not Found! Bye.');
+  quit('Device Not Found!');
 }
 
 setLedBrightness(device, 0);
-
-inquirer.prompt({
-  type: 'list',
-  name: 'action',
-  message: 'What would you like to do?',
-  choices: [
-    'Save',
-    'Write',
-    new inquirer.Separator(),
-    'Quit',
-  ],
-  default: 'Quit',
-}).then((choice) => {
-  ACTIONS[choice.action]();
-});
-
-function quit(message = null) {
-  console.log(message || 'Bye.');
-  console.log('');
-  process.exit();
-}
-
-function save() {
-
-}
-
-/*
-
-console.log('1. ')
-
-setLedBrightness(device, 0);
-
-var block = false;
+console.log('Waiting for', command == 'read' ? 'Amiibo' : 'tag', '...');
 
 setInterval(() => {
-  if (block) {
-    return;
-  }
-
-  block = true;
   var status = getStatus(device);
 
   if (status[0] == 1) {
-    setLedBrightness(device, 0);
-    block = false;
     return;
   }
 
-  setLedBrightness(device, 1);
-
+  console.log(command == 'read' ? 'Amiibo' : 'tag', 'found');
   console.log();
 
-  readNFC(device).forEach((byte, index) => {
-    process.stdout.write(('00' + byte.toString(16)).slice(-2) + ' ');
+  command == 'read' && writeAmiiboToFile(device, path);
+  command == 'write' && writeAmiiboToTag(device, path);
 
-    if ((index + 1) % 16 == 0) {
-      console.log();
-    } else if ((index + 1) % 8 == 0) {
-      process.stdout.write('| ');
-    }
-
-  });
-
-  console.log();
-
-  //writeNFC(device);
-  process.exit();
+  quit('Done.');
 }, 1000);
+
+function printUsage() {
+  console.log('Usage: node main.js <command> <path>');
+  console.log('');
+  console.log('Commands:');
+  console.log('    read     Reads Amiibo and writes it to a file.');
+  console.log('    write    Reads a file and writes it to a tag.');
+}
+
+function quit(message = null) {
+  message && console.log(message);
+  process.exit();
+}
 
 function getStatus(device) {
   device.write(getCommand([0x11]));
@@ -108,7 +80,7 @@ function setLedBrightness(device, value) {
   device.write(getCommand([0x20, value]));
 }
 
-function readNFC(device) {
+function writeAmiiboToFile(device, path) {
   var data = [];
 
   //34 16bytes pages
@@ -118,19 +90,30 @@ function readNFC(device) {
   }
 
   //4 bytes extra
-  return data.slice(0, -4);
+  data = data.slice(0, -4);
+
+  data.forEach((byte, index) => {
+    process.stdout.write(('00' + byte.toString(16)).slice(-2) + ' ');
+
+    if ((index + 1) % 16 == 0) {
+      console.log();
+    } else if ((index + 1) % 8 == 0) {
+      process.stdout.write('| ');
+    }
+  });
+
+  console.log();
 }
 
-function writeNFC(device) {
-  var data = fs.readFileSync('test.bin');
+function writeAmiiboToTag(device, path) {
+  var data = fs.readFileSync(path);
   data = Array.prototype.slice.call(data, 0);
 
   // 135 4byte pages
   for (i = 0; i <= 134; i++) {
     device.write(getCommand([0x1D, i].concat(data.slice(i * 4, (i * 4) + 4))));
+    console.log(device.readSync().toString('hex'));
   }
-
-  process.exit();
 }
 
 function getCommand(command) {
@@ -143,4 +126,3 @@ function getCommand(command) {
 
   return command;
 }
-*/
